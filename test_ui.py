@@ -35,14 +35,7 @@ class Page:
     def __init__(self, driver):
         self.driver = driver
 
-    def click_button_day(self, date):
-        logger.info('Click day button')
-        button_day = self.driver.find_element(By.XPATH, '(//div[@class="v-btn__content"][text() = "{}"])'.format(date))
-        button_day.click()
-        logger.info('day button is clicked')
-        return button_day.get_attribute("textContent")
-
-    def pick_date(self, days_delta):
+    def pick_date(self, days_delta):  # this function is designed to select a date only 100 years forward and backward
         logger.info('date picker')
         year_and_month = self.driver.find_element(By.XPATH, '//div[@class="accent--text"]//button[@type="button"]').get_attribute("textContent")
         button_year = self.driver.find_element(By.XPATH, '//div[@class="v-picker__title__btn v-date-picker-title__year"]')
@@ -69,18 +62,42 @@ class Page:
         logger.info('date selected')
         return target_date.strftime('%Y-%m-%d')
 
-    def selected_date(self):
+    def date_lookup(self):
         logger.info('search for selected date')
-        selected_date = self.driver.find_element(By.XPATH, '//div[@class="col-sm-6 col-12"][span]').get_attribute("textContent")
+        date_lookup = self.driver.find_element(By.XPATH, '//div[@class="col-sm-6 col-12"][span]').get_attribute("textContent")
+        clearing_date = date_lookup.replace('Selected dates: ', '')
+        clearing_date = clearing_date.replace(',', '')
+        split_dates = clearing_date.split()
         logger.info('date found')
-        return selected_date[17:27]
+        return split_dates
+
+    def remove_dates(self, res):
+        logger.info('deleting dates')
+        for x in res:
+            change_dates = datetime.datetime.strptime(x, "%Y-%m-%d")
+            button_day = self.driver.find_element(By.XPATH, '(//div[@class="v-btn__content"][text() = "{}"])'.format(change_dates.strftime('%#d')))
+            button_day.click()
+        logger.info('dates removed')
+
+    def scroll(self, text):
+        text = self.driver.find_element(By.XPATH, '(//a[@href="#test-task"])')
+        driver.execute_script("arguments[0].click();", text)
+
+    # option #2
+    # def scroll(self, text):
+    #     target = self.driver.find_element(By.LINK_TEXT, text)
+    #     actions = ActionChains(driver)
+    #     actions.move_to_element(target)
+    #     actions.perform()
 
 
 page_data = Page(driver)
 
 
 def test(login, exit_web):
-    page_data.click_button_day(15)
-    page_data.click_button_day(20)
+    page_data.scroll('Test task')
+    get_dates = page_data.date_lookup()
+    page_data.remove_dates(get_dates)
     get_data = page_data.pick_date(3)
-    assert get_data == page_data.selected_date()
+    pytest.assume(get_dates not in page_data.date_lookup())
+    pytest.assume(get_data in page_data.date_lookup())
